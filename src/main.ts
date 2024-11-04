@@ -13,5 +13,5 @@ button.innerHTML = "Click Me";
 app.append(button);
 
 button.addEventListener("click", () => {
-    alert('You just clicked the button!')
+    alert("You just clicked the button!")
 });
