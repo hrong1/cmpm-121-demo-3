@@ -4,6 +4,7 @@ import luck from "./luck.ts";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 import "./leafletWorkaround.ts";
+import { Board } from "./board.ts";
 
 const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
@@ -45,6 +46,28 @@ let playerCoins = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!; // element `statusPanel` is defined in index.html
 statusPanel.innerHTML = "No coins yet...";
 
+// container for player coin
+interface Coin {
+  i: number;
+  j: number;
+  serial: number;
+}
+let playerInventory: Coin[] = [];
+
+interface CacheCoin {
+  i: number;
+  j: number;
+  coin: number;
+}
+let CacheInventory: CacheCoin[] = [];
+
+function updateCoin(i, j, newCoins) {
+  const CacheIndex = CacheInventory.findIndex(CacheInventory => CacheInventory.i === i, CacheInventory => CacheInventory.j === j);
+  if (CacheIndex !== -1) {
+    CacheInventory[CacheIndex].coin = newCoins;
+  }
+}
+
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
   // Convert cell numbers into lat/lng bounds
@@ -58,14 +81,22 @@ function spawnCache(i: number, j: number) {
   const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
-  // Get the latitude
+  // Get the latitude and longitude
   const cellI = i + OAKES_CLASSROOM.lat;
   const cellJ = j + OAKES_CLASSROOM.lng;
+
   // Handle interactions with the cache
   rect.bindPopup(() => {
-    // Each cache has a random coin value, mutable by the player
-    let coinValue = Math.floor(luck([i, j, "initialValue"].toString()) * 5);
-
+    const coins = CacheInventory.find(CacheInventory => CacheInventory.i === cellI, CacheInventory => CacheInventory.j === cellJ);
+    if (coins === undefined) {
+      // Each cache has a random coin value, mutable by the player
+      let initialValue= Math.floor(luck([i, j, "initialValue"].toString()) * 5);
+      CacheInventory.push({i: cellI, j: cellJ, coin: initialValue});
+      for (let serial = 0; serial < initialValue; serial++) {
+        playerInventory.push({i: cellI, j: cellJ, serial: serial});
+      }
+    }
+    let coinValue = CacheInventory.find(CacheInventory => CacheInventory.i === cellI, CacheInventory => CacheInventory.j === cellJ)?.coin
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
@@ -77,27 +108,30 @@ function spawnCache(i: number, j: number) {
     popupDiv
       .querySelector<HTMLButtonElement>("#pick")!
       .addEventListener("click", () => {
-        if (coinValue > 0) {
+        if (coinValue && coinValue > 0) {
           coinValue--;
           popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML =
             coinValue.toString();
           playerCoins++;
+          updateCoin(cellI, cellJ, coinValue);
           statusPanel.innerHTML = `${playerCoins} coins accumulated`;
         }
       });
     popupDiv
       .querySelector<HTMLButtonElement>("#drop")!
       .addEventListener("click", () => {
-        if (playerCoins > 0) {
+        if (playerCoins > 0 && coinValue !== undefined) {
           coinValue++;
           popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML =
             coinValue.toString();
           playerCoins--;
+          updateCoin(cellI, cellJ, coinValue);
           statusPanel.innerHTML = `${playerCoins} coins accumulated`;
         }
       });
     return popupDiv;
   });
+
 }
 
 // Look around the player's neighborhood for caches to spawn
