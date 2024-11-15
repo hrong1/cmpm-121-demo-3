@@ -60,10 +60,10 @@ interface CacheCoin {
 }
 let CacheInventory: CacheCoin[] = [];
 
-function updateCoin(i, j, newCoins) {
+function updateCoin(i: number, j: number, newCoins: number) {
   const CacheIndex = CacheInventory.findIndex(
-    (CacheInventory) => CacheInventory.i === i,
-    (CacheInventory) => CacheInventory.j === j,
+    (CacheInventory: { i: number }) => CacheInventory.i === i,
+    (CacheInventory: { j: number }) => CacheInventory.j === j,
   );
   if (CacheIndex !== -1) {
     CacheInventory[CacheIndex].coin = newCoins;
