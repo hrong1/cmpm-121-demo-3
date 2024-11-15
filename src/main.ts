@@ -62,7 +62,10 @@ interface CacheCoin {
 let CacheInventory: CacheCoin[] = [];
 
 function updateCoin(i, j, newCoins) {
-  const CacheIndex = CacheInventory.findIndex(CacheInventory => CacheInventory.i === i, CacheInventory => CacheInventory.j === j);
+  const CacheIndex = CacheInventory.findIndex(
+    (CacheInventory) => CacheInventory.i === i,
+    (CacheInventory) => CacheInventory.j === j,
+  );
   if (CacheIndex !== -1) {
     CacheInventory[CacheIndex].coin = newCoins;
   }
@@ -87,16 +90,24 @@ function spawnCache(i: number, j: number) {
 
   // Handle interactions with the cache
   rect.bindPopup(() => {
-    const coins = CacheInventory.find(CacheInventory => CacheInventory.i === cellI, CacheInventory => CacheInventory.j === cellJ);
+    const coins = CacheInventory.find(
+      (CacheInventory) => CacheInventory.i === cellI,
+      (CacheInventory) => CacheInventory.j === cellJ,
+    );
     if (coins === undefined) {
       // Each cache has a random coin value, mutable by the player
-      let initialValue= Math.floor(luck([i, j, "initialValue"].toString()) * 5);
-      CacheInventory.push({i: cellI, j: cellJ, coin: initialValue});
+      let initialValue = Math.floor(
+        luck([i, j, "initialValue"].toString()) * 5,
+      );
+      CacheInventory.push({ i: cellI, j: cellJ, coin: initialValue });
       for (let serial = 0; serial < initialValue; serial++) {
-        playerInventory.push({i: cellI, j: cellJ, serial: serial});
+        playerInventory.push({ i: cellI, j: cellJ, serial: serial });
       }
     }
-    let coinValue = CacheInventory.find(CacheInventory => CacheInventory.i === cellI, CacheInventory => CacheInventory.j === cellJ)?.coin
+    let coinValue = CacheInventory.find(
+      (CacheInventory) => CacheInventory.i === cellI,
+      (CacheInventory) => CacheInventory.j === cellJ,
+    )?.coin;
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
@@ -131,7 +142,6 @@ function spawnCache(i: number, j: number) {
       });
     return popupDiv;
   });
-
 }
 
 // Look around the player's neighborhood for caches to spawn
