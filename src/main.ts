@@ -8,7 +8,7 @@ import "./leafletWorkaround.ts";
 const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
 //Title
-document.title = "Demo 3";
+document.title = "Geocoin Carrier";
 
 // Tunable gameplay parameters
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -58,15 +58,18 @@ function spawnCache(i: number, j: number) {
   const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
+  // Get the latitude
+  const cellI = i + OAKES_CLASSROOM.lat
+  const cellJ = j + OAKES_CLASSROOM.lng
   // Handle interactions with the cache
   rect.bindPopup(() => {
     // Each cache has a random coin value, mutable by the player
-    let coinValue = Math.floor(luck([i, j, "initialValue"].toString()) * 100);
+    let coinValue = Math.floor(luck([i, j, "initialValue"].toString()) * 5);
 
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
-                <div>There is a cache here at "${i},${j}". It has coin <span id="value">${coinValue}</span>.</div>
+                <div>There is a cache here at "${cellI},${cellJ}". It has coin <span id="value">${coinValue}</span>.</div>
                 <button id="pick">pick</button>
                 <button id="drop">drop</button>`;
 
@@ -96,6 +99,8 @@ function spawnCache(i: number, j: number) {
     return popupDiv;
   });
 }
+
+
 
 // Look around the player's neighborhood for caches to spawn
 for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
