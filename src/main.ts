@@ -90,8 +90,8 @@ function spawnCache(i: number, j: number) {
   // Handle interactions with the cache
   rect.bindPopup(() => {
     const coins = CacheInventory.find(
-      (CacheInventory) => CacheInventory.i === cellI,
-      (CacheInventory) => CacheInventory.j === cellJ,
+      (CacheInventory: { i: number }) => CacheInventory.i === cellI,
+      (CacheInventory: { j: number }) => CacheInventory.j === cellJ,
     );
     if (coins === undefined) {
       // Each cache has a random coin value, mutable by the player
