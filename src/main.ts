@@ -51,14 +51,14 @@ interface Coin {
   j: number;
   serial: number;
 }
-let playerInventory: Coin[] = [];
+const playerInventory: Coin[] = [];
 
 interface CacheCoin {
   i: number;
   j: number;
   coin: number;
 }
-let CacheInventory: CacheCoin[] = [];
+const CacheInventory: CacheCoin[] = [];
 
 function updateCoin(i: number, j: number, newCoins: number) {
   const CacheIndex = CacheInventory.findIndex(
@@ -95,7 +95,7 @@ function spawnCache(i: number, j: number) {
     );
     if (coins === undefined) {
       // Each cache has a random coin value, mutable by the player
-      let initialValue = Math.floor(
+      const initialValue = Math.floor(
         luck([i, j, "initialValue"].toString()) * 5,
       );
       CacheInventory.push({ i: cellI, j: cellJ, coin: initialValue });
