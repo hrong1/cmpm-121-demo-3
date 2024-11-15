@@ -59,8 +59,8 @@ function spawnCache(i: number, j: number) {
   rect.addTo(map);
 
   // Get the latitude
-  const cellI = i + OAKES_CLASSROOM.lat
-  const cellJ = j + OAKES_CLASSROOM.lng
+  const cellI = i + OAKES_CLASSROOM.lat;
+  const cellJ = j + OAKES_CLASSROOM.lng;
   // Handle interactions with the cache
   rect.bindPopup(() => {
     // Each cache has a random coin value, mutable by the player
@@ -99,8 +99,6 @@ function spawnCache(i: number, j: number) {
     return popupDiv;
   });
 }
-
-
 
 // Look around the player's neighborhood for caches to spawn
 for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
