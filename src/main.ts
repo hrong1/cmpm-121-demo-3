@@ -104,8 +104,8 @@ function spawnCache(i: number, j: number) {
       }
     }
     let coinValue = CacheInventory.find(
-      (CacheInventory) => CacheInventory.i === cellI,
-      (CacheInventory) => CacheInventory.j === cellJ,
+      (CacheInventory: { i: number }) => CacheInventory.i === cellI,
+      (CacheInventory: { j: number }) => CacheInventory.j === cellJ,
     )?.coin;
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
