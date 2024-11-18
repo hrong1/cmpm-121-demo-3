@@ -63,7 +63,7 @@ const CacheInventory: CacheCoin[] = [];
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
   // Convert cell numbers into lat/lng bounds
-  const origin = OAKES_CLASSROOM;
+  const origin = playerMarker.getLatLng();
   const bounds = leaflet.latLngBounds([
     [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
     [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
@@ -74,8 +74,8 @@ function spawnCache(i: number, j: number) {
   rect.addTo(map);
 
   // Get the latitude and longitude
-  const cellI = i + OAKES_CLASSROOM.lat;
-  const cellJ = j + OAKES_CLASSROOM.lng;
+  const cellI = i + playerMarker.getLatLng().lat;
+  const cellJ = j + playerMarker.getLatLng().lng;
   const cacheCoin: Coin[] = [];
   // Handle interactions with the cache
   rect.bindPopup(() => {
@@ -83,6 +83,7 @@ function spawnCache(i: number, j: number) {
       (CacheInventory) =>
         CacheInventory.i === cellI && CacheInventory.j === cellJ,
     );
+
     if (coins === undefined) {
       // Each cache has a random coin value, mutable by the player
       const initialValue = Math.floor(
@@ -100,7 +101,7 @@ function spawnCache(i: number, j: number) {
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
-               <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
+              <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
 
     // Clicking the button decrements the cache's value and increments the player's coins
     cacheCoin.forEach((coin) => {
@@ -174,4 +175,52 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
       spawnCache(i, j);
     }
   }
+}
+
+const moveButtons = {
+  north: document.getElementById("north"),
+  south: document.getElementById("south"),
+  west: document.getElementById("west"),
+  east: document.getElementById("east"),
+  reset: document.getElementById("reset"),
+};
+
+if (
+  moveButtons.north && moveButtons.south && moveButtons.west &&
+  moveButtons.east && moveButtons.reset
+) {
+  moveButtons.north.addEventListener("click", () => movePlayer(1, 0));
+  moveButtons.south.addEventListener("click", () => movePlayer(-1, 0));
+  moveButtons.west.addEventListener("click", () => movePlayer(0, -1));
+  moveButtons.east.addEventListener("click", () => movePlayer(0, 1));
+  moveButtons.reset.addEventListener("click", () => resetPlayer());
+}
+
+function movePlayer(i: number, j: number) {
+  const newLatLng = leaflet.latLng(
+    playerMarker.getLatLng().lat + i * TILE_DEGREES,
+    playerMarker.getLatLng().lng + j * TILE_DEGREES,
+  );
+  map.setView(newLatLng);
+  playerMarker.setLatLng(newLatLng);
+  spawnCache(
+    playerMarker.getLatLng().lat + i * TILE_DEGREES,
+    playerMarker.getLatLng().lng + j * TILE_DEGREES,
+  );
+  const cellI = i + playerMarker.getLatLng().lat + i * TILE_DEGREES;
+  const cellJ = j + playerMarker.getLatLng().lng + j * TILE_DEGREES;
+  for (let x = -NEIGHBORHOOD_SIZE; x <= NEIGHBORHOOD_SIZE; x++) {
+    for (let y = -NEIGHBORHOOD_SIZE; y <= NEIGHBORHOOD_SIZE; y++) {
+      const newI = cellI + x;
+      const newJ = cellJ + y;
+      if (luck([newI, newJ].toString()) < CACHE_SPAWN_PROBABILITY) {
+        spawnCache(newI, newJ);
+      }
+    }
+  }
+}
+
+function resetPlayer() {
+  map.setView(OAKES_CLASSROOM);
+  playerMarker.setLatLng(OAKES_CLASSROOM);
 }
