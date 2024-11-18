@@ -9,6 +9,10 @@ const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
 //Title
 document.title = "Geocoin Carrier";
+let max_x: number = 0;
+let max_y: number = 0;
+let min_x: number = 0;
+let min_y: number = 0;
 
 // Tunable gameplay parameters
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -62,8 +66,19 @@ const CacheInventory: CacheCoin[] = [];
 
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
+  // Get the latitude and longitude
+  const cellI = i + playerMarker.getLatLng().lat;
+  const cellJ = j + playerMarker.getLatLng().lng;
+  const coins = CacheInventory.find(
+    (CacheInventory) =>
+      CacheInventory.i === cellI && CacheInventory.j === cellJ,
+  );
+  if (coins !== undefined) {
+    return;
+  }
   // Convert cell numbers into lat/lng bounds
-  const origin = playerMarker.getLatLng();
+  // const origin = playerMarker.getLatLng();
+  const origin = OAKES_CLASSROOM;
   const bounds = leaflet.latLngBounds([
     [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
     [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
@@ -71,11 +86,9 @@ function spawnCache(i: number, j: number) {
 
   // Add a rectangle to the map to represent the cache
   const rect = leaflet.rectangle(bounds);
+  // const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
-  // Get the latitude and longitude
-  const cellI = i + playerMarker.getLatLng().lat;
-  const cellJ = j + playerMarker.getLatLng().lng;
   const cacheCoin: Coin[] = [];
   // Handle interactions with the cache
   rect.bindPopup(() => {
@@ -201,20 +214,26 @@ function movePlayer(i: number, j: number) {
     playerMarker.getLatLng().lat + i * TILE_DEGREES,
     playerMarker.getLatLng().lng + j * TILE_DEGREES,
   );
+  if (i == 1 && j == 0) {
+    max_x += NEIGHBORHOOD_SIZE;
+    // console.log(playerMarker.getLatLng().lat)
+  } else if (i == -1 && j == 0) {
+    min_x -= NEIGHBORHOOD_SIZE;
+  } else if (i == 0 && j == 1) {
+    max_y += NEIGHBORHOOD_SIZE;
+  } else if (i == 0 && j == -1) {
+    min_y -= NEIGHBORHOOD_SIZE;
+  }
   map.setView(newLatLng);
   playerMarker.setLatLng(newLatLng);
-  spawnCache(
-    playerMarker.getLatLng().lat + i * TILE_DEGREES,
-    playerMarker.getLatLng().lng + j * TILE_DEGREES,
-  );
-  const cellI = i + playerMarker.getLatLng().lat + i * TILE_DEGREES;
-  const cellJ = j + playerMarker.getLatLng().lng + j * TILE_DEGREES;
-  for (let x = -NEIGHBORHOOD_SIZE; x <= NEIGHBORHOOD_SIZE; x++) {
-    for (let y = -NEIGHBORHOOD_SIZE; y <= NEIGHBORHOOD_SIZE; y++) {
-      const newI = cellI + x;
-      const newJ = cellJ + y;
-      if (luck([newI, newJ].toString()) < CACHE_SPAWN_PROBABILITY) {
-        spawnCache(newI, newJ);
+  for (let x = -NEIGHBORHOOD_SIZE + min_x; x < NEIGHBORHOOD_SIZE + max_x; x++) {
+    for (
+      let y = -NEIGHBORHOOD_SIZE + min_y;
+      y < NEIGHBORHOOD_SIZE + max_y;
+      y++
+    ) {
+      if (luck([x, y].toString()) < CACHE_SPAWN_PROBABILITY) {
+        spawnCache(x, y);
       }
     }
   }
