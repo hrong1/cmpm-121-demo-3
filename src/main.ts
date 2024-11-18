@@ -64,25 +64,32 @@ interface CacheCoin {
 }
 const CacheInventory: CacheCoin[] = [];
 
+interface itme {
+  bounds: leaflet.LatLngBounds;
+}
+
+const list: itme[] = [];
+
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
   // Get the latitude and longitude
   const cellI = i + playerMarker.getLatLng().lat;
   const cellJ = j + playerMarker.getLatLng().lng;
-  const coins = CacheInventory.find(
-    (CacheInventory) =>
-      CacheInventory.i === cellI && CacheInventory.j === cellJ,
-  );
-  if (coins !== undefined) {
-    return;
-  }
   // Convert cell numbers into lat/lng bounds
-  // const origin = playerMarker.getLatLng();
   const origin = OAKES_CLASSROOM;
   const bounds = leaflet.latLngBounds([
     [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
     [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
   ]);
+  // store bounds
+  const itme = list.find(
+    (list) => bounds.equals(list.bounds),
+  );
+  if (itme !== undefined) {
+    return;
+  } else {
+    list.push({ bounds: bounds });
+  }
 
   // Add a rectangle to the map to represent the cache
   const rect = leaflet.rectangle(bounds);
