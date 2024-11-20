@@ -19,6 +19,7 @@ const GAMEPLAY_ZOOM_LEVEL = 19;
 const TILE_DEGREES = 1e-4;
 const NEIGHBORHOOD_SIZE = 8;
 const CACHE_SPAWN_PROBABILITY = 0.1;
+const MAP_UPDATE_DISTANCE = 1;
 
 // Create the map (element with id "map" is defined in index.html)
 const map = leaflet.map(document.getElementById("map")!, {
@@ -64,11 +65,17 @@ interface CacheCoin {
 }
 const CacheInventory: CacheCoin[] = [];
 
-interface itme {
+interface item {
   bounds: leaflet.LatLngBounds;
 }
+interface rectangle {
+  rect: leaflet.Rectangle;
+}
+const list: item[] = [];
+const mapItem: rectangle[] = [];
 
-const list: itme[] = [];
+let moveHistory: leaflet.LatLng[] = [];
+let polyLine: leaflet.Polyline | null = null;
 
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
@@ -95,6 +102,7 @@ function spawnCache(i: number, j: number) {
   const rect = leaflet.rectangle(bounds);
   // const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
+  mapItem.push({ rect });
 
   const cacheCoin: Coin[] = [];
   // Handle interactions with the cache
@@ -187,16 +195,6 @@ function spawnCache(i: number, j: number) {
   });
 }
 
-// Look around the player's neighborhood for caches to spawn
-for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
-    // If location i,j is lucky enough, spawn a cache!
-    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-      spawnCache(i, j);
-    }
-  }
-}
-
 const moveButtons = {
   north: document.getElementById("north"),
   south: document.getElementById("south"),
@@ -222,17 +220,28 @@ function movePlayer(i: number, j: number) {
     playerMarker.getLatLng().lng + j * TILE_DEGREES,
   );
   if (i == 1 && j == 0) {
-    max_x += NEIGHBORHOOD_SIZE;
-    // console.log(playerMarker.getLatLng().lat)
+    max_x += MAP_UPDATE_DISTANCE;
+    min_x += MAP_UPDATE_DISTANCE;
   } else if (i == -1 && j == 0) {
-    min_x -= NEIGHBORHOOD_SIZE;
+    min_x -= MAP_UPDATE_DISTANCE;
+    max_x -= MAP_UPDATE_DISTANCE;
   } else if (i == 0 && j == 1) {
-    max_y += NEIGHBORHOOD_SIZE;
+    max_y += MAP_UPDATE_DISTANCE;
+    min_y += MAP_UPDATE_DISTANCE;
   } else if (i == 0 && j == -1) {
-    min_y -= NEIGHBORHOOD_SIZE;
+    min_y -= MAP_UPDATE_DISTANCE;
+    max_y -= MAP_UPDATE_DISTANCE;
   }
   map.setView(newLatLng);
   playerMarker.setLatLng(newLatLng);
+  moveHistory.push(playerMarker.getLatLng());
+  if (polyLine) {
+    map.removeLayer(polyLine);
+  }
+  polyLine = leaflet.polyline(moveHistory, {
+    color: "red",
+    weight: 3,
+  }).addTo(map);
   for (let x = -NEIGHBORHOOD_SIZE + min_x; x < NEIGHBORHOOD_SIZE + max_x; x++) {
     for (
       let y = -NEIGHBORHOOD_SIZE + min_y;
@@ -249,4 +258,18 @@ function movePlayer(i: number, j: number) {
 function resetPlayer() {
   map.setView(OAKES_CLASSROOM);
   playerMarker.setLatLng(OAKES_CLASSROOM);
+  playerInventory.length = 0;
+  CacheInventory.length = 0;
+  list.length = 0;
+  playerCoins = 0;
+  statusPanel.innerHTML = "No coins yet...";
+  moveHistory = [];
+  if (polyLine) {
+    map.removeLayer(polyLine);
+    polyLine = null;
+  }
+  location.reload();
 }
+
+// Look around the player's neighborhood for caches to spawn
+movePlayer(0, 0);
