@@ -67,11 +67,7 @@ const CacheInventory: CacheCoin[] | null = [];
 interface item {
   bounds: leaflet.LatLngBounds;
 }
-interface rectangle {
-  rect: leaflet.Rectangle;
-}
 const list: item[] | null = [];
-const mapItem: rectangle[] = [];
 
 let moveHistory: leaflet.LatLng[] | null = loadPlayerHistory();
 let polyLine: leaflet.Polyline | null = null;
@@ -139,9 +135,7 @@ function spawnCache(i: number, j: number) {
 
   // Add a rectangle to the map to represent the cache
   const rect = leaflet.rectangle(bounds);
-  // const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
-  mapItem.push({ rect });
 
   const cacheCoin: Coin[] = [];
   // Handle interactions with the cache
@@ -321,11 +315,6 @@ function resetPlayer() {
       CacheInventory.length = 0;
       list.length = 0;
     }
-    // moveHistory = [];
-    // if (polyLine) {
-    //   map.removeLayer(polyLine);
-    //   polyLine = null;
-    // }
     localStorage.removeItem("playerLocation");
     localStorage.removeItem("playerView");
     localStorage.removeItem("playerHistory");
