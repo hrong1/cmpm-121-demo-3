@@ -9,10 +9,10 @@ const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
 //Title
 document.title = "Geocoin Carrier";
-let max_x: number = loadMax_X();
-let max_y: number = loadMax_Y();
-let min_x: number = loadMin_X();
-let min_y: number = loadMin_Y();
+let max_x: number = loadBound("max_x");
+let max_y: number = loadBound("max_y");
+let min_x: number = loadBound("min_y");
+let min_y: number = loadBound("min_y");
 let currentGeolocation: number = 0;
 let deviceGeolocation: number | null = null;
 let playerLocation = loadPlayerLoc() || OAKES_CLASSROOM;
@@ -106,20 +106,8 @@ function loadPlayerHistory(): leaflet.LatLng[] | null {
   return savedHistory ? JSON.parse(savedHistory) : [];
 }
 
-function loadMax_X(): number | number {
-  const num = localStorage.getItem("max_x");
-  return num ? JSON.parse(num) : 0;
-}
-function loadMax_Y(): number | number {
-  const num = localStorage.getItem("max_y");
-  return num ? JSON.parse(num) : 0;
-}
-function loadMin_X(): number | number {
-  const num = localStorage.getItem("min_x");
-  return num ? JSON.parse(num) : 0;
-}
-function loadMin_Y(): number | number {
-  const num = localStorage.getItem("max_y");
+function loadBound(boundName: string): number {
+  const num = localStorage.getItem(boundName);
   return num ? JSON.parse(num) : 0;
 }
 
