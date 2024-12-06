@@ -109,54 +109,83 @@ function checkBounds(bounds: leaflet.LatLngBounds) {
 
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
-  // Convert cell numbers into lat/lng bounds
+  const bounds = calculateCacheBounds(i, j);
+
+  if (!checkBounds(bounds)) return;
+  // Add a rectangle to the map to represent the cache
+  const rect = addCacheToMap(bounds);
+
+  const cacheCoin: Coin[] = [];
+  // Handle interactions with the cache
+  rect.bindPopup(() => createCachePopup(i, j, cacheCoin));
+}
+
+function calculateCacheBounds(i: number, j: number): leaflet.LatLngBounds {
   const original = playerLocation;
-  const bounds = leaflet.latLngBounds([
+  return leaflet.latLngBounds([
     [original.lat + i * TILE_DEGREES, original.lng + j * TILE_DEGREES],
     [
       original.lat + (i + 1) * TILE_DEGREES,
       original.lng + (j + 1) * TILE_DEGREES,
     ],
   ]);
+}
 
-  if (checkBounds(bounds)) {
-    // Add a rectangle to the map to represent the cache
-    const rect = leaflet.rectangle(bounds);
-    rect.addTo(map);
+function addCacheToMap(bounds: leaflet.LatLngBounds): leaflet.Rectangle {
+  const rect = leaflet.rectangle(bounds);
+  rect.addTo(map);
+  return rect;
+}
 
-    const cacheCoin: Coin[] = [];
-    // Handle interactions with the cache
-    rect.bindPopup(() => createCachePopup(i, j, cacheCoin));
+// check if Cache exit
+function checkCacheExit(cellI: number, cellJ: number, cacheCoin: Coin[]) {
+  const cache = CacheInventory.find(
+    (CacheInventory) =>
+      CacheInventory.i === cellI && CacheInventory.j === cellJ,
+  );
+  if (cache === undefined) {
+    addCoinToCache(cellI, cellJ, cacheCoin); // push new cache
   }
+}
+
+function addCoinToCache(cellI: number, cellJ: number, cacheCoin: Coin[]) {
+  // Each cache has a random coin value, mutable by the player
+  const initialValue = Math.floor(
+    luck([cellI, cellJ, "initialValue"].toString()) * 5,
+  );
+  CacheInventory.push({ i: cellI, j: cellJ, coin: initialValue });
+  for (let serial = 1; serial <= initialValue; serial++) {
+    cacheCoin.push({ i: cellI, j: cellJ, serial: serial });
+  }
+}
+
+// return the number of coin in Cache
+function getCoinValue(cellI: number, cellJ: number) {
+  return CacheInventory.find(
+    (CacheInventory) =>
+      CacheInventory.i === cellI && CacheInventory.j === cellJ,
+  )?.coin;
+}
+
+function createPopupDiv(
+  cellI: number,
+  cellJ: number,
+  coinValue: number | undefined,
+) {
+  const popupDiv = document.createElement("div");
+  popupDiv.innerHTML = `
+            <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
+  return popupDiv;
 }
 
 function createCachePopup(i: number, j: number, cacheCoin: Coin[]) {
   const cellI = i + playerMarker.getLatLng().lat;
   const cellJ = j + playerMarker.getLatLng().lng;
   if (CacheInventory && playerInventory) {
-    const coins = CacheInventory.find(
-      (CacheInventory) =>
-        CacheInventory.i === cellI && CacheInventory.j === cellJ,
-    );
-
-    if (coins === undefined) {
-      // Each cache has a random coin value, mutable by the player
-      const initialValue = Math.floor(
-        luck([i, j, "initialValue"].toString()) * 5,
-      );
-      CacheInventory.push({ i: cellI, j: cellJ, coin: initialValue });
-      for (let serial = 1; serial <= initialValue; serial++) {
-        cacheCoin.push({ i: cellI, j: cellJ, serial: serial });
-      }
-    }
-    const coinValue = CacheInventory.find(
-      (CacheInventory) =>
-        CacheInventory.i === cellI && CacheInventory.j === cellJ,
-    )?.coin;
+    checkCacheExit(cellI, cellJ, cacheCoin);
+    const coinValue = getCoinValue(cellI, cellJ);
     // The popup offers a description and button
-    const popupDiv = document.createElement("div");
-    popupDiv.innerHTML = `
-            <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
+    const popupDiv = createPopupDiv(cellI, cellJ, coinValue);
 
     // Clicking the button decrements the cache's value and increments the player's coins
     cacheCoin.forEach((coin) =>
@@ -189,18 +218,16 @@ function updatePopupText(
   }
 }
 
-function createPickupButton(
+function addPickToButton(
+  button: HTMLButtonElement,
+  cellI: number,
+  cellJ: number,
   coin: Coin,
   cacheCoin: Coin[],
   popupDiv: HTMLDivElement,
-  cellI: number,
-  cellJ: number,
+  text: HTMLDivElement,
   coinValue: number | undefined,
 ) {
-  const text = document.createElement("div");
-  text.innerHTML = `${coin.i}:${coin.j} #${coin.serial} `;
-  const button = document.createElement("button");
-  button.innerHTML = "pick";
   button.addEventListener("click", () => {
     const cache_value = CacheInventory.find(
       (CacheInventory) =>
@@ -220,19 +247,42 @@ function createPickupButton(
     updatePopupText(cellI, cellJ, popupDiv, coinValue);
     saveGameState();
   });
-  popupDiv.appendChild(text);
-  popupDiv.appendChild(button);
 }
 
-function createDropButton(
+function createPickupButton(
+  coin: Coin,
   cacheCoin: Coin[],
   popupDiv: HTMLDivElement,
   cellI: number,
   cellJ: number,
   coinValue: number | undefined,
 ) {
-  const dropButton = document.createElement("button");
-  dropButton.innerHTML = "drop";
+  const text = document.createElement("div");
+  text.innerHTML = `${coin.i}:${coin.j} #${coin.serial} `;
+  const button = document.createElement("button");
+  button.innerHTML = "pick";
+  addPickToButton(
+    button,
+    cellI,
+    cellJ,
+    coin,
+    cacheCoin,
+    popupDiv,
+    text,
+    coinValue,
+  );
+  popupDiv.appendChild(text);
+  popupDiv.appendChild(button);
+}
+
+function addDropToButton(
+  dropButton: HTMLButtonElement,
+  cellI: number,
+  cellJ: number,
+  cacheCoin: Coin[],
+  popupDiv: HTMLDivElement,
+  coinValue: number | undefined,
+) {
   dropButton.addEventListener("click", () => {
     if (playerCoins > 0 && playerInventory.length > 0) {
       const cache_value = CacheInventory.find(
@@ -250,6 +300,18 @@ function createDropButton(
     }
     updatePopupText(cellI, cellJ, popupDiv, coinValue);
   });
+}
+
+function createDropButton(
+  cacheCoin: Coin[],
+  popupDiv: HTMLDivElement,
+  cellI: number,
+  cellJ: number,
+  coinValue: number | undefined,
+) {
+  const dropButton = document.createElement("button");
+  dropButton.innerHTML = "drop";
+  addDropToButton(dropButton, cellI, cellJ, cacheCoin, popupDiv, coinValue);
   popupDiv.appendChild(dropButton);
 }
 
@@ -275,11 +337,21 @@ if (
   moveButtons.sensor.innerHTML = "🌐 (Off)";
 }
 
-function movePlayer(i: number, j: number) {
-  viewPoint = leaflet.latLng(
-    playerMarker.getLatLng().lat + i * TILE_DEGREES,
-    playerMarker.getLatLng().lng + j * TILE_DEGREES,
-  );
+function spawnCacheOnMove() {
+  for (let x = -NEIGHBORHOOD_SIZE + min_x; x < NEIGHBORHOOD_SIZE + max_x; x++) {
+    for (
+      let y = -NEIGHBORHOOD_SIZE + min_y;
+      y < NEIGHBORHOOD_SIZE + max_y;
+      y++
+    ) {
+      if (luck([x, y].toString()) < CACHE_SPAWN_PROBABILITY) {
+        spawnCache(x, y);
+      }
+    }
+  }
+}
+
+function handleLocalBoundaryValue(i: number, j: number) {
   if (i == 1 && j == 0) {
     max_x += MAP_UPDATE_DISTANCE;
     min_x += MAP_UPDATE_DISTANCE;
@@ -293,21 +365,9 @@ function movePlayer(i: number, j: number) {
     min_y -= MAP_UPDATE_DISTANCE;
     max_y -= MAP_UPDATE_DISTANCE;
   }
-  map.setView(viewPoint);
-  playerMarker.setLatLng(viewPoint);
-  moveHistory?.push(playerMarker.getLatLng());
-  saveGameState();
-  for (let x = -NEIGHBORHOOD_SIZE + min_x; x < NEIGHBORHOOD_SIZE + max_x; x++) {
-    for (
-      let y = -NEIGHBORHOOD_SIZE + min_y;
-      y < NEIGHBORHOOD_SIZE + max_y;
-      y++
-    ) {
-      if (luck([x, y].toString()) < CACHE_SPAWN_PROBABILITY) {
-        spawnCache(x, y);
-      }
-    }
-  }
+}
+
+function updatePolyLine() {
   if (polyLine) {
     map.removeLayer(polyLine);
   }
@@ -317,6 +377,20 @@ function movePlayer(i: number, j: number) {
       weight: 3,
     }).addTo(map);
   }
+}
+
+function movePlayer(i: number, j: number) {
+  viewPoint = leaflet.latLng(
+    playerMarker.getLatLng().lat + i * TILE_DEGREES,
+    playerMarker.getLatLng().lng + j * TILE_DEGREES,
+  );
+  handleLocalBoundaryValue(i, j);
+  map.setView(viewPoint);
+  playerMarker.setLatLng(viewPoint);
+  moveHistory?.push(playerMarker.getLatLng());
+  saveGameState();
+  spawnCacheOnMove();
+  updatePolyLine();
 }
 
 function resetPlayer() {
@@ -334,6 +408,13 @@ function resetPlayer() {
     localStorage.clear();
     location.reload();
   }
+}
+
+function resetLocalBoundaryValue() {
+  max_x = 0;
+  max_y = 0;
+  min_x = 0;
+  min_y = 0;
 }
 
 function currentLocation() {
@@ -355,10 +436,7 @@ function currentLocation() {
           }
         },
       );
-      max_x = 0;
-      max_y = 0;
-      min_x = 0;
-      min_y = 0;
+      resetLocalBoundaryValue();
       currentGeolocation = 1;
       moveButtons.sensor.innerHTML = "🌐 (On)";
     }
