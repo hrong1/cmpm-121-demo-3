@@ -107,11 +107,23 @@ function loadBound(boundName: string): number {
   return num ? JSON.parse(num) : 0;
 }
 
+// check bound is exit
+function checkBounds(bounds: leaflet.LatLngBounds) {
+  if (list) {
+    const itme = list.find(
+      (list) => bounds.equals(list.bounds),
+    );
+    if (itme !== undefined) {
+      return false; // return false if exit
+    } else {
+      list.push({ bounds: bounds });
+      return true; // return ture if not
+    }
+  }
+}
+
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
-  // Get the latitude and longitude
-  const cellI = i + playerMarker.getLatLng().lat;
-  const cellJ = j + playerMarker.getLatLng().lng;
   // Convert cell numbers into lat/lng bounds
   const original = playerLocation;
   const bounds = leaflet.latLngBounds([
@@ -121,120 +133,114 @@ function spawnCache(i: number, j: number) {
       original.lng + (j + 1) * TILE_DEGREES,
     ],
   ]);
-  // store bounds
-  if (list) {
-    const itme = list.find(
-      (list) => bounds.equals(list.bounds),
-    );
-    if (itme !== undefined) {
-      return;
-    } else {
-      list.push({ bounds: bounds });
-    }
+
+  if (checkBounds(bounds)) {
+    // Add a rectangle to the map to represent the cache
+    const rect = leaflet.rectangle(bounds);
+    rect.addTo(map);
+
+    const cacheCoin: Coin[] = [];
+    // Handle interactions with the cache
+    rect.bindPopup(() => createCachePopup(i, j, cacheCoin));
   }
+}
 
-  // Add a rectangle to the map to represent the cache
-  const rect = leaflet.rectangle(bounds);
-  rect.addTo(map);
+function createCachePopup(i: number, j: number, cacheCoin: Coin[]) {
+  const cellI = i + playerMarker.getLatLng().lat;
+  const cellJ = j + playerMarker.getLatLng().lng;
+  if (CacheInventory && playerInventory) {
+    const coins = CacheInventory.find(
+      (CacheInventory) =>
+        CacheInventory.i === cellI && CacheInventory.j === cellJ,
+    );
 
-  const cacheCoin: Coin[] = [];
-  // Handle interactions with the cache
-  rect.bindPopup(() => {
-    if (CacheInventory && playerInventory) {
-      const coins = CacheInventory.find(
-        (CacheInventory) =>
-          CacheInventory.i === cellI && CacheInventory.j === cellJ,
+    if (coins === undefined) {
+      // Each cache has a random coin value, mutable by the player
+      const initialValue = Math.floor(
+        luck([i, j, "initialValue"].toString()) * 5,
       );
-
-      if (coins === undefined) {
-        // Each cache has a random coin value, mutable by the player
-        const initialValue = Math.floor(
-          luck([i, j, "initialValue"].toString()) * 5,
-        );
-        CacheInventory.push({ i: cellI, j: cellJ, coin: initialValue });
-        for (let serial = 1; serial <= initialValue; serial++) {
-          cacheCoin.push({ i: cellI, j: cellJ, serial: serial });
-        }
+      CacheInventory.push({ i: cellI, j: cellJ, coin: initialValue });
+      for (let serial = 1; serial <= initialValue; serial++) {
+        cacheCoin.push({ i: cellI, j: cellJ, serial: serial });
       }
-      let coinValue = CacheInventory.find(
-        (CacheInventory) =>
-          CacheInventory.i === cellI && CacheInventory.j === cellJ,
-      )?.coin;
-      // The popup offers a description and button
-      const popupDiv = document.createElement("div");
-      popupDiv.innerHTML = `
-              <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
+    }
+    let coinValue = CacheInventory.find(
+      (CacheInventory) =>
+        CacheInventory.i === cellI && CacheInventory.j === cellJ,
+    )?.coin;
+    // The popup offers a description and button
+    const popupDiv = document.createElement("div");
+    popupDiv.innerHTML = `
+            <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
 
-      // Clicking the button decrements the cache's value and increments the player's coins
-      cacheCoin.forEach((coin) => {
-        const text = document.createElement("div");
-        text.innerHTML = `${coin.i}:${coin.j} #${coin.serial} `;
-        const button = document.createElement("button");
-        button.innerHTML = "pick";
-        button.addEventListener("click", () => {
-          const cache_value = CacheInventory.find(
-            (CacheInventory) =>
-              CacheInventory.i === cellI && CacheInventory.j === cellJ,
-          );
-          if (cache_value && cache_value.coin > 0) {
-            playerCoins++;
-            playerInventory.push(coin);
-            cache_value.coin -= 1;
-            const index = cacheCoin.findIndex((cacheCoin: { serial: number }) =>
-              cacheCoin.serial === coin.serial
-            );
-            cacheCoin.splice(index, 1);
-          }
-          popupDiv.removeChild(text);
-          popupDiv.removeChild(button);
-          updatePopup();
-          saveGameState();
-        });
-        popupDiv.appendChild(text);
-        popupDiv.appendChild(button);
-      });
-
-      const dropButton = document.createElement("button");
-      dropButton.innerHTML = "drop";
-      dropButton.addEventListener("click", () => {
-        if (playerCoins > 0 && playerInventory.length > 0) {
-          const cache_value = CacheInventory.find(
-            (CacheInventory) =>
-              CacheInventory.i === cellI && CacheInventory.j === cellJ,
-          );
-          const coin = playerInventory.pop()!;
-          cacheCoin.push(coin);
-          if (cache_value) {
-            cache_value.coin++;
-          }
-          playerCoins--;
-          popupDiv.removeChild(dropButton);
-          saveGameState();
-        }
-        updatePopup();
-      });
-      popupDiv.appendChild(dropButton);
-
-      const updatePopup = () => {
-        statusPanel.innerHTML = `${playerCoins} coins accumulated`;
+    // Clicking the button decrements the cache's value and increments the player's coins
+    cacheCoin.forEach((coin) => {
+      const text = document.createElement("div");
+      text.innerHTML = `${coin.i}:${coin.j} #${coin.serial} `;
+      const button = document.createElement("button");
+      button.innerHTML = "pick";
+      button.addEventListener("click", () => {
         const cache_value = CacheInventory.find(
           (CacheInventory) =>
             CacheInventory.i === cellI && CacheInventory.j === cellJ,
         );
-        if (cache_value) {
-          coinValue = cache_value.coin;
-          popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML =
-            coinValue
-              .toString();
+        if (cache_value && cache_value.coin > 0) {
+          playerCoins++;
+          playerInventory.push(coin);
+          cache_value.coin -= 1;
+          const index = cacheCoin.findIndex((cacheCoin: { serial: number }) =>
+            cacheCoin.serial === coin.serial
+          );
+          cacheCoin.splice(index, 1);
         }
-      };
-      return popupDiv;
-    } else {
-      const errorText = document.createElement("div");
-      errorText.innerHTML = "Cache load failed";
-      return errorText;
-    }
-  });
+        popupDiv.removeChild(text);
+        popupDiv.removeChild(button);
+        updatePopup();
+        saveGameState();
+      });
+      popupDiv.appendChild(text);
+      popupDiv.appendChild(button);
+    });
+
+    const dropButton = document.createElement("button");
+    dropButton.innerHTML = "drop";
+    dropButton.addEventListener("click", () => {
+      if (playerCoins > 0 && playerInventory.length > 0) {
+        const cache_value = CacheInventory.find(
+          (CacheInventory) =>
+            CacheInventory.i === cellI && CacheInventory.j === cellJ,
+        );
+        const coin = playerInventory.pop()!;
+        cacheCoin.push(coin);
+        if (cache_value) {
+          cache_value.coin++;
+        }
+        playerCoins--;
+        popupDiv.removeChild(dropButton);
+        saveGameState();
+      }
+      updatePopup();
+    });
+    popupDiv.appendChild(dropButton);
+
+    const updatePopup = () => {
+      statusPanel.innerHTML = `${playerCoins} coins accumulated`;
+      const cache_value = CacheInventory.find(
+        (CacheInventory) =>
+          CacheInventory.i === cellI && CacheInventory.j === cellJ,
+      );
+      if (cache_value) {
+        coinValue = cache_value.coin;
+        popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML = coinValue
+          .toString();
+      }
+    };
+    return popupDiv;
+  } else {
+    const errorText = document.createElement("div");
+    errorText.innerHTML = "Cache load failed";
+    return errorText;
+  }
 }
 
 const moveButtons = {
