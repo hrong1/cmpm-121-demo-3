@@ -9,6 +9,10 @@ const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
 //Title
 document.title = "Geocoin Carrier";
+let max_x: number = 0;
+let max_y: number = 0;
+let min_x: number = 0;
+let min_y: number = 0;
 
 // Tunable gameplay parameters
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -60,22 +64,38 @@ interface CacheCoin {
 }
 const CacheInventory: CacheCoin[] = [];
 
+interface itme {
+  bounds: leaflet.LatLngBounds;
+}
+
+const list: itme[] = [];
+
 // Add caches to the map by cell numbers
 function spawnCache(i: number, j: number) {
+  // Get the latitude and longitude
+  const cellI = i + playerMarker.getLatLng().lat;
+  const cellJ = j + playerMarker.getLatLng().lng;
   // Convert cell numbers into lat/lng bounds
   const origin = OAKES_CLASSROOM;
   const bounds = leaflet.latLngBounds([
     [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
     [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
   ]);
+  // store bounds
+  const itme = list.find(
+    (list) => bounds.equals(list.bounds),
+  );
+  if (itme !== undefined) {
+    return;
+  } else {
+    list.push({ bounds: bounds });
+  }
 
   // Add a rectangle to the map to represent the cache
   const rect = leaflet.rectangle(bounds);
+  // const rect = leaflet.rectangle(bounds);
   rect.addTo(map);
 
-  // Get the latitude and longitude
-  const cellI = i + OAKES_CLASSROOM.lat;
-  const cellJ = j + OAKES_CLASSROOM.lng;
   const cacheCoin: Coin[] = [];
   // Handle interactions with the cache
   rect.bindPopup(() => {
@@ -83,6 +103,7 @@ function spawnCache(i: number, j: number) {
       (CacheInventory) =>
         CacheInventory.i === cellI && CacheInventory.j === cellJ,
     );
+
     if (coins === undefined) {
       // Each cache has a random coin value, mutable by the player
       const initialValue = Math.floor(
@@ -100,7 +121,7 @@ function spawnCache(i: number, j: number) {
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
-               <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
+              <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
 
     // Clicking the button decrements the cache's value and increments the player's coins
     cacheCoin.forEach((coin) => {
@@ -174,4 +195,58 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
       spawnCache(i, j);
     }
   }
+}
+
+const moveButtons = {
+  north: document.getElementById("north"),
+  south: document.getElementById("south"),
+  west: document.getElementById("west"),
+  east: document.getElementById("east"),
+  reset: document.getElementById("reset"),
+};
+
+if (
+  moveButtons.north && moveButtons.south && moveButtons.west &&
+  moveButtons.east && moveButtons.reset
+) {
+  moveButtons.north.addEventListener("click", () => movePlayer(1, 0));
+  moveButtons.south.addEventListener("click", () => movePlayer(-1, 0));
+  moveButtons.west.addEventListener("click", () => movePlayer(0, -1));
+  moveButtons.east.addEventListener("click", () => movePlayer(0, 1));
+  moveButtons.reset.addEventListener("click", () => resetPlayer());
+}
+
+function movePlayer(i: number, j: number) {
+  const newLatLng = leaflet.latLng(
+    playerMarker.getLatLng().lat + i * TILE_DEGREES,
+    playerMarker.getLatLng().lng + j * TILE_DEGREES,
+  );
+  if (i == 1 && j == 0) {
+    max_x += NEIGHBORHOOD_SIZE;
+    // console.log(playerMarker.getLatLng().lat)
+  } else if (i == -1 && j == 0) {
+    min_x -= NEIGHBORHOOD_SIZE;
+  } else if (i == 0 && j == 1) {
+    max_y += NEIGHBORHOOD_SIZE;
+  } else if (i == 0 && j == -1) {
+    min_y -= NEIGHBORHOOD_SIZE;
+  }
+  map.setView(newLatLng);
+  playerMarker.setLatLng(newLatLng);
+  for (let x = -NEIGHBORHOOD_SIZE + min_x; x < NEIGHBORHOOD_SIZE + max_x; x++) {
+    for (
+      let y = -NEIGHBORHOOD_SIZE + min_y;
+      y < NEIGHBORHOOD_SIZE + max_y;
+      y++
+    ) {
+      if (luck([x, y].toString()) < CACHE_SPAWN_PROBABILITY) {
+        spawnCache(x, y);
+      }
+    }
+  }
+}
+
+function resetPlayer() {
+  map.setView(OAKES_CLASSROOM);
+  playerMarker.setLatLng(OAKES_CLASSROOM);
 }
