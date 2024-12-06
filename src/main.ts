@@ -9,14 +9,14 @@ const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
 //Title
 document.title = "Geocoin Carrier";
-let max_x: number = loadBound("max_x");
-let max_y: number = loadBound("max_y");
-let min_x: number = loadBound("min_y");
-let min_y: number = loadBound("min_y");
+let max_x: number = loadData("max_x", 0);
+let max_y: number = loadData("max_y", 0);
+let min_x: number = loadData("min_x", 0);
+let min_y: number = loadData("min_y", 0);
 let currentGeolocation: number = 0;
 let deviceGeolocation: number | null = null;
-let playerLocation = loadPlayerLoc() || OAKES_CLASSROOM;
-let viewPoint = loadPlayerView() || playerLocation;
+let playerLocation = loadData("playerLocation", null) || OAKES_CLASSROOM;
+let viewPoint = loadData("playerView", null) || playerLocation;
 
 // Tunable gameplay parameters
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -69,7 +69,7 @@ interface item {
 }
 const list: item[] | null = [];
 
-let moveHistory: leaflet.LatLng[] | null = loadPlayerHistory();
+let moveHistory: leaflet.LatLng[] | null = loadData("playerHistory", []);
 let polyLine: leaflet.Polyline | null = null;
 
 // Display the player's coins
@@ -87,33 +87,18 @@ function saveGameState() {
   localStorage.setItem("min_y", JSON.stringify(min_y));
 }
 
-function loadPlayerLoc(): leaflet.LatLng | null {
-  const savedLoc = localStorage.getItem("playerLocation");
-  return savedLoc ? leaflet.latLng(JSON.parse(savedLoc)) : null;
+function loadData<T>(key: string, defaultValue: T): T {
+  const savedData = localStorage.getItem(key);
+  return savedData ? JSON.parse(savedData) : defaultValue;
 }
 
-function loadPlayerView(): leaflet.LatLng | null {
-  const savedLoc = localStorage.getItem("playerView");
-  return savedLoc ? leaflet.latLng(JSON.parse(savedLoc)) : null;
-}
-
-function loadPlayerHistory(): leaflet.LatLng[] | null {
-  const savedHistory = localStorage.getItem("playerHistory");
-  return savedHistory ? JSON.parse(savedHistory) : [];
-}
-
-function loadBound(boundName: string): number {
-  const num = localStorage.getItem(boundName);
-  return num ? JSON.parse(num) : 0;
-}
-
-// check bound is exit
+// Check if bounds exist
 function checkBounds(bounds: leaflet.LatLngBounds) {
   if (list) {
-    const itme = list.find(
+    const item = list.find(
       (list) => bounds.equals(list.bounds),
     );
-    if (itme !== undefined) {
+    if (item !== undefined) {
       return false; // return false if exit
     } else {
       list.push({ bounds: bounds });
@@ -321,13 +306,7 @@ function resetPlayer() {
       CacheInventory.length = 0;
       list.length = 0;
     }
-    localStorage.removeItem("playerLocation");
-    localStorage.removeItem("playerView");
-    localStorage.removeItem("playerHistory");
-    localStorage.removeItem("max_x");
-    localStorage.removeItem("max_y");
-    localStorage.removeItem("min_x");
-    localStorage.removeItem("min_y");
+    localStorage.clear();
     location.reload();
   }
 }
