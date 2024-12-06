@@ -62,7 +62,7 @@ interface CacheCoin {
   j: number;
   coin: number;
 }
-const CacheInventory: CacheCoin[] | null = [];
+const CacheInventory: CacheCoin[] = [];
 
 interface item {
   bounds: leaflet.LatLngBounds;
@@ -149,7 +149,7 @@ function createCachePopup(i: number, j: number, cacheCoin: Coin[]) {
         cacheCoin.push({ i: cellI, j: cellJ, serial: serial });
       }
     }
-    let coinValue = CacheInventory.find(
+    const coinValue = CacheInventory.find(
       (CacheInventory) =>
         CacheInventory.i === cellI && CacheInventory.j === cellJ,
     )?.coin;
@@ -159,73 +159,98 @@ function createCachePopup(i: number, j: number, cacheCoin: Coin[]) {
             <div>There is a cache here at "${cellI}:${cellJ}". It has <span id="value">${coinValue}</span> coin.</div>`;
 
     // Clicking the button decrements the cache's value and increments the player's coins
-    cacheCoin.forEach((coin) => {
-      const text = document.createElement("div");
-      text.innerHTML = `${coin.i}:${coin.j} #${coin.serial} `;
-      const button = document.createElement("button");
-      button.innerHTML = "pick";
-      button.addEventListener("click", () => {
-        const cache_value = CacheInventory.find(
-          (CacheInventory) =>
-            CacheInventory.i === cellI && CacheInventory.j === cellJ,
-        );
-        if (cache_value && cache_value.coin > 0) {
-          playerCoins++;
-          playerInventory.push(coin);
-          cache_value.coin -= 1;
-          const index = cacheCoin.findIndex((cacheCoin: { serial: number }) =>
-            cacheCoin.serial === coin.serial
-          );
-          cacheCoin.splice(index, 1);
-        }
-        popupDiv.removeChild(text);
-        popupDiv.removeChild(button);
-        updatePopup();
-        saveGameState();
-      });
-      popupDiv.appendChild(text);
-      popupDiv.appendChild(button);
-    });
-
-    const dropButton = document.createElement("button");
-    dropButton.innerHTML = "drop";
-    dropButton.addEventListener("click", () => {
-      if (playerCoins > 0 && playerInventory.length > 0) {
-        const cache_value = CacheInventory.find(
-          (CacheInventory) =>
-            CacheInventory.i === cellI && CacheInventory.j === cellJ,
-        );
-        const coin = playerInventory.pop()!;
-        cacheCoin.push(coin);
-        if (cache_value) {
-          cache_value.coin++;
-        }
-        playerCoins--;
-        popupDiv.removeChild(dropButton);
-        saveGameState();
-      }
-      updatePopup();
-    });
-    popupDiv.appendChild(dropButton);
-
-    const updatePopup = () => {
-      statusPanel.innerHTML = `${playerCoins} coins accumulated`;
-      const cache_value = CacheInventory.find(
-        (CacheInventory) =>
-          CacheInventory.i === cellI && CacheInventory.j === cellJ,
-      );
-      if (cache_value) {
-        coinValue = cache_value.coin;
-        popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML = coinValue
-          .toString();
-      }
-    };
+    cacheCoin.forEach((coin) =>
+      createPickupButton(coin, cacheCoin, popupDiv, cellI, cellJ, coinValue)
+    );
+    createDropButton(cacheCoin, popupDiv, cellI, cellJ, coinValue);
     return popupDiv;
   } else {
     const errorText = document.createElement("div");
     errorText.innerHTML = "Cache load failed";
     return errorText;
   }
+}
+
+function updatePopupText(
+  cellI: number,
+  cellJ: number,
+  popupDiv: HTMLDivElement,
+  coinValue: number | undefined,
+) {
+  statusPanel.innerHTML = `${playerCoins} coins accumulated`;
+  const cache_value = CacheInventory.find(
+    (CacheInventory) =>
+      CacheInventory.i === cellI && CacheInventory.j === cellJ,
+  );
+  if (cache_value) {
+    coinValue = cache_value.coin;
+    popupDiv.querySelector<HTMLSpanElement>("#value")!.innerHTML = coinValue
+      .toString();
+  }
+}
+
+function createPickupButton(
+  coin: Coin,
+  cacheCoin: Coin[],
+  popupDiv: HTMLDivElement,
+  cellI: number,
+  cellJ: number,
+  coinValue: number | undefined,
+) {
+  const text = document.createElement("div");
+  text.innerHTML = `${coin.i}:${coin.j} #${coin.serial} `;
+  const button = document.createElement("button");
+  button.innerHTML = "pick";
+  button.addEventListener("click", () => {
+    const cache_value = CacheInventory.find(
+      (CacheInventory) =>
+        CacheInventory.i === cellI && CacheInventory.j === cellJ,
+    );
+    if (cache_value && cache_value.coin > 0) {
+      playerCoins++;
+      playerInventory.push(coin);
+      cache_value.coin -= 1;
+      const index = cacheCoin.findIndex((cacheCoin: { serial: number }) =>
+        cacheCoin.serial === coin.serial
+      );
+      cacheCoin.splice(index, 1);
+    }
+    popupDiv.removeChild(text);
+    popupDiv.removeChild(button);
+    updatePopupText(cellI, cellJ, popupDiv, coinValue);
+    saveGameState();
+  });
+  popupDiv.appendChild(text);
+  popupDiv.appendChild(button);
+}
+
+function createDropButton(
+  cacheCoin: Coin[],
+  popupDiv: HTMLDivElement,
+  cellI: number,
+  cellJ: number,
+  coinValue: number | undefined,
+) {
+  const dropButton = document.createElement("button");
+  dropButton.innerHTML = "drop";
+  dropButton.addEventListener("click", () => {
+    if (playerCoins > 0 && playerInventory.length > 0) {
+      const cache_value = CacheInventory.find(
+        (CacheInventory) =>
+          CacheInventory.i === cellI && CacheInventory.j === cellJ,
+      );
+      const coin = playerInventory.pop()!;
+      cacheCoin.push(coin);
+      if (cache_value) {
+        cache_value.coin++;
+      }
+      playerCoins--;
+      popupDiv.removeChild(dropButton);
+      saveGameState();
+    }
+    updatePopupText(cellI, cellJ, popupDiv, coinValue);
+  });
+  popupDiv.appendChild(dropButton);
 }
 
 const moveButtons = {
