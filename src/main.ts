@@ -167,6 +167,14 @@ function getCoinValue(cellI: number, cellJ: number) {
   )?.coin;
 }
 
+/**
+ * Creates a popup div to display cache information.
+ * @param cellI - Grid cell I-coordinate of the cache.
+ * @param cellJ - Grid cell J-coordinate of the cache.
+ * @param coinValue - Number of coins currently in the cache.
+ * @returns HTMLDivElement representing the popup.
+ */
+
 function createPopupDiv(
   cellI: number,
   cellJ: number,
